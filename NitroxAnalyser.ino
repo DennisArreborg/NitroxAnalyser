@@ -234,14 +234,25 @@ void printO2toTFT (float O2,float lastO2) {
         txtB = 255; }  // Txt color white
         else { 
         txtR = 0;
-        txtG = 255;
-        txtB = 0; }  // Txt color blue
+        txtG = 100;
+        txtB = 255; }  // Txt color blue
+        
+  if (stable == true){
+    txtR = 0;
+    txtG = 255;
+    txtB = 0;      //txt color green
+  } else {
+    txtR = 255;
+    txtG = 0;
+    txtB = 0; }  // Txt color white
+        
+        
 
         
        
   
   
-  if (O2 != lastO2) {
+//  if (O2 != lastO2) {
     
     EsploraTFT.setTextSize(6);
     float2TFT(O2,lastO2,     //New and old value
@@ -252,7 +263,7 @@ void printO2toTFT (float O2,float lastO2) {
               
 
   }
-  }
+//  }
   
   void printRAWValueToTFT (float O2,float lastO2) {
   if (screenState != 1) {
@@ -318,7 +329,9 @@ void printO2toTFT (float O2,float lastO2) {
 
     
   }
- 
+ /*********************************************************
+ Determine if last x seconds reading is stable
+ ********************************************************/
  
   boolean isStable(float * O2readings,int nReadings) {
     
@@ -329,14 +342,15 @@ void printO2toTFT (float O2,float lastO2) {
     float avgRead = mean(O2readings,nReadings);
     
     //Determine if reading is stable
+/*
     Serial.print("std: ");
     Serial.print(stdRead);
     Serial.print("\t");
     Serial.print("Average: ");
     Serial.println(avgRead);
-    
+  */  
     int THR = 100;
-    if (stdRead <= avgRead/THR) {
+    if (stdRead <= 0.1) {
         return true;  
     } else {
         return false;
