@@ -74,13 +74,13 @@ if (millis() - lasttime < 250) {
   if (hold == false) {
     //Read sensor
     O2 = getO2value(cal);
-    int i;
+/*    int i;
     for (i=0 ; i <= 18 ; i++) {
       O2readings[i] = O2readings[i+1];      
       Serial.print(O2readings[i]);
       Serial.print("\t");
     }
-    O2readings[19] = O2;
+    O2readings[19] = O2;*/
     Serial.println(O2readings[19]);
  }
     
