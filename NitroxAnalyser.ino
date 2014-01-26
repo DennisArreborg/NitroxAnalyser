@@ -1,6 +1,7 @@
 #include <Esplora.h>
 #include <TFT.h>  // Arduino LCD library
 #include <SPI.h>
+#include <Average.h> // math
 
 
 
@@ -15,7 +16,10 @@ int buttonDur = 0;
 unsigned long lasttime = 0;
 boolean hold = false;
 boolean printHold = false;
-float O2readings[19];
+float O2readings[20] = {0};
+boolean stable = false;
+
+
 
 int txtR = 255;
 int txtG = 255;
@@ -74,15 +78,20 @@ if (millis() - lasttime < 250) {
   if (hold == false) {
     //Read sensor
     O2 = getO2value(cal);
-/*    int i;
-    for (i=0 ; i <= 18 ; i++) {
+
+    for (int i=0 ; i <= 18 ; i++) {
       O2readings[i] = O2readings[i+1];      
       Serial.print(O2readings[i]);
       Serial.print("\t");
     }
-    O2readings[19] = O2;*/
+    O2readings[19] = O2;
     Serial.println(O2readings[19]);
  }
+ 
+  stable = isStable(O2readings,20);
+  if (stable == true) {
+    Serial.println("stable");
+  }
     
     //Print serial
     Serial.print("O2: ");
@@ -309,3 +318,28 @@ void printO2toTFT (float O2,float lastO2) {
 
     
   }
+ 
+ 
+  boolean isStable(float * O2readings,int nReadings) {
+    
+    // get parameters
+    float minRead = minimum(O2readings,nReadings);
+    float maxRead = maximum(O2readings,nReadings);
+    float stdRead = stddev(O2readings,nReadings);
+    float avgRead = mean(O2readings,nReadings);
+    
+    //Determine if reading is stable
+    Serial.print("std: ");
+    Serial.print(stdRead);
+    Serial.print("\t");
+    Serial.print("Average: ");
+    Serial.println(avgRead);
+    
+    int THR = 100;
+    if (stdRead <= avgRead/THR) {
+        return true;  
+    } else {
+        return false;
+    }
+  }
+  
