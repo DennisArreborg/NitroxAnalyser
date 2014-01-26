@@ -19,15 +19,8 @@ boolean printHold = false;
 float O2readings[20] = {0};
 boolean stable = false;
 
-
-
-int txtR = 255;
-int txtG = 255;
-int txtB = 255;
-
-
-
-
+int bg[3] = {0,0,0};
+int txt[3] = {255,255,255};
 
 void setup() {
   Serial.begin(9600);
@@ -81,11 +74,11 @@ if (millis() - lasttime < 250) {
 
     for (int i=0 ; i <= 18 ; i++) {
       O2readings[i] = O2readings[i+1];      
-      Serial.print(O2readings[i]);
-      Serial.print("\t");
+      //Serial.print(O2readings[i]);
+      //Serial.print("\t");
     }
     O2readings[19] = O2;
-    Serial.println(O2readings[19]);
+    //Serial.println(O2readings[19]);
  }
  
   stable = isStable(O2readings,20);
@@ -220,8 +213,8 @@ void printO2toTFT (float O2,float lastO2) {
         float2TFT(0.0,cal,
                   30,120,
                   6,5,
-                  255,255,255,
-                  0,0,0);
+                  bg,
+                  txt);
 //        char calprintout[6];
 //        dtostrf(cal, 1, 5, calprintout);
 //        EsploraTFT.text(calprintout,30,120);
@@ -229,22 +222,16 @@ void printO2toTFT (float O2,float lastO2) {
   }
   
   if (hold == false){
-        txtR = 255;
-        txtG = 255;
-        txtB = 255; }  // Txt color white
+    txt = {255,255,255};
+ }  // Txt color white
         else { 
-        txtR = 0;
-        txtG = 100;
-        txtB = 255; }  // Txt color blue
+        txt = {0,100,255};
+ }  // Txt color blue
         
   if (stable == true){
-    txtR = 0;
-    txtG = 255;
-    txtB = 0;      //txt color green
+    txt = {0,255,0}; //txt color green
   } else {
-    txtR = 255;
-    txtG = 0;
-    txtB = 0; }  // Txt color white
+    txt = {255,0,0}; // Txt color white
         
         
 
@@ -258,8 +245,8 @@ void printO2toTFT (float O2,float lastO2) {
     float2TFT(O2,lastO2,     //New and old value
               0,30,          //Xpos, Ypos
               4,1,           //Width, precision
-              0,0,0,         //Bg color
-              txtR,txtG,txtB);  //txt color;    
+              bg         //Bg color
+              txt);  //txt color;    
               
 
   }
@@ -284,25 +271,25 @@ void printO2toTFT (float O2,float lastO2) {
   }
   
   if (hold == false){
-        txtR = 255;
-        txtG = 255;
-        txtB = 255; }  // Txt color white
+      txt = {255,255,255};
+    }  // Txt color white
         else { 
-        txtR = 0;
-        txtG = 255;
-        txtB = 0; }  // Txt color blue
+      txt = {0,0,255};
+    }  // Txt color blue
   
   if (O2 != lastO2) {
     Serial.print(O2);
     EsploraTFT.setTextSize(5);
-    float2TFT(O2,lastO2,0,30,3,0,0,0,0,txtR,txtG,txtB);    
+    float2TFT(O2,lastO2,0,30,3,0,bg,txt);    
   }
   }
   
   
   
-  // Print value to TFT
-  void float2TFT(float value,float oldValue,int posX, int posY, int width, int precision, int bgR, int bgG, int bgB, int txtR, int txtG, int txtB) {
+  /*----------------------------------------------------
+  Print value to TFT
+  ------------------------------------------------------*/
+  void float2TFT(float value,float oldValue,int posX, int posY, int width, int precision, int  bg[], int txt[]) {
     //Prepare char arrays
     char valPrintout[width+1];
     dtostrf(value, width, precision, valPrintout);
@@ -310,19 +297,18 @@ void printO2toTFT (float O2,float lastO2) {
     dtostrf(oldValue, width, precision, oldValPrintout);
     
     //If arrays has changed, update
-    Serial.print(valPrintout);
-    Serial.print("\t");
-    Serial.print(oldValPrintout);
+    Serial.println(valPrintout);
+    Serial.println(oldValPrintout);
     if (valPrintout != oldValPrintout) {
-      Serial.print("\t Different!!");
+      Serial.print("Different!!");
     }
     Serial.println();
-    if (valPrintout != oldValPrintout) {
+    if (value != oldValue) {
       Serial.println("Writing to TFT");
       //Clear screen of old print
-      EsploraTFT.stroke(bgR,bgG,bgB);
+      EsploraTFT.stroke(bg[0],bg[1],bg[2]);
       EsploraTFT.text(oldValPrintout,posX,posY);
-      EsploraTFT.stroke(txtR,txtG,txtB);
+      EsploraTFT.stroke(txt[0],txt[1],txt[2]);
       EsploraTFT.text(valPrintout,posX,posY);
     }
         
