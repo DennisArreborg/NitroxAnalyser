@@ -1,8 +1,11 @@
-#include <Esplora.h>
 #include <TFT.h>  // Arduino LCD library
 #include <SPI.h>
 #include <Average.h> // math
+#include <Wire.h>
+#include <Adafruit_ADS1015.h>
 
+
+Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 
 
 float O2 = 0;
@@ -29,12 +32,16 @@ int txt[3] = {
 
 void setup() {
   Serial.begin(9600);
+    ads.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
+    ads.begin();
 
+/*
   // initialize the screen
   EsploraTFT.begin();
   // clear the screen with black
   Serial.println("Clear screen");
   EsploraTFT.background(0,0,0); 
+  */
 }
 
 void loop() {
