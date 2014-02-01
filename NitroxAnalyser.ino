@@ -22,42 +22,59 @@ TFT TFTscreen = TFT(LCD_CS, DC, RST);
 
 
 // Initialize variables
-float O2 = 0;
-float lastO2 = 1;
-boolean calibrated = false;
-int screenState = 0;
-float cal = 1.0;
-int state = 1; //Analyze state: 1: Main, 2: calibrate, 3:hold
-int t0 = 0; // Button timer
-int buttonState = 0;
-int buttonDur = 0;
-unsigned long lasttime = 0;
-boolean hold = false;
-boolean printHold = false;
-float O2readings[20] = {
+float O2 = 0;                    //O2 sensor value
+float lastO2 = 1;                //Previous O2 reading for screen update
+boolean calibrated = false;      //Is sensor calibrated
+int screenState = 0;             //State of the screen
+//1: Main view
+//2: Calibratin
+//3: 
+float cal = 1.0;                 //Calibration factor
+int state = 1;                   //Analyze state:
+//1: Main
+//2: calibrate
+//3:hold
+int t0 = 0;                      // Button timer
+int buttonState = 0;             // Button state
+int buttonDur = 0;              // Duration of push
+unsigned long lasttime = 0;      // last update time
+boolean hold = false;            //hold activated=
+boolean printHold = false;        //did hold value print
+float O2readings[20] = {          // Keep last 20 readings in memory
   0};
-boolean stable = false;
+boolean stable = false;          //Is reading stable?
 int nReadings = 20;
 
 
-int bg[3] = {
+int bg[3] = {                  //default bg coloar
   0,0,0};
-int txt[3] = {
+int txt[3] = {                //txt
   255,255,255};
 
+// create default colors
+int white[] = {
+  255,255,255};
+int red[] = {
+  255,0,0};
+int green[] = {
+  0,255,0};
+int blue[] = {
+  0,0,255};
+
+
+
+
 void setup() {
-  
+
   //Start serial communication
   Serial.begin(9600);
-  
-  //Start adc
-    adc.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
-    adc.begin();
-    #define GAIN 0.015625
-    
-    // Start TFT
 
- // initialize the screen
+  //Start adc
+  adc.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
+  adc.begin();
+#define GAIN 0.015625
+
+  // initialize the screen
   TFTscreen.begin();
   // clear the screen with black
   Serial.println("Clear screen");
@@ -66,8 +83,7 @@ void setup() {
 }
 
 void loop() {
-  //Read buttopn
-
+  //Read button
   while (digitalRead(BUTTON) == LOW) {
     // If the button is pressed, determine the lengt of the push
     if (t0 == 0) {
@@ -139,16 +155,16 @@ void loop() {
 }
 
 /*----------------------------------------------------
-Read 02 sensor from ADC
------------------------------------------------------*/
+ Read 02 sensor from ADC
+ -----------------------------------------------------*/
 float readSensor() {
   //Read 16 bit value from pin 0 and multiply by gain
   float val = adc.readADC_SingleEnded(0)*GAIN;
-  
+
   //This is reading in mV
   return val;
 }
-  
+
 
 /*-------------------------------------------------------
  Reads value from o sensor. 
@@ -183,9 +199,10 @@ float getO2value(float cal) {
  Returns the slope, so current value is 20.9
  ------------------------------------------*/
 float calibrate() {
-  int nCount = 20;      //Number of samples
+  int nSample = 20;      //Number of samples
+  int n = 0;              //Sample counter
   int delayTime = 250;  //Delay beween sampe
-  int readings = 0;     //Sum of samples
+  unsigned long readTime = 0;     //Sum of samples
 
   Serial.println("Calibrating sensor to 20.9");
 
@@ -197,56 +214,56 @@ float calibrate() {
   TFTscreen.text("Calibrating",0,0);
   screenState = 3;
 
-
-  // Read sensor
-  int valMin = 1023;
-  int valMax = 0;
-  boolean calOK = false;
-
-  for (int i = 1; i<=nCount;i++) {
-    int val = readSensor();
-
-    if (val < valMin) {
-      valMin = val;
+  while (n < nSample) {
+    if (millis()-readTime >= delayTime) {
+      //store in array, log the 20 last readings
+       O2readings[n] = readSensor();
+       Serial.print(O2readings[n]);
+       Serial.print("\t");
+       //increment counter
+       n++;
+       //update read time
+       readTime = millis();
+      
     }
-    if (val > valMax) {
-      valMax = val;
-    }
-
-
-    readings = readings + val;
-    delay(delayTime);
   }
-
-
-  // Reading is mean of readins
-  float reading = readings/nCount;
-  Serial.println(reading);
-
-  // Check for variation
-  if (valMax-valMin < reading*0.01 ) {
-    calOK = true;
+  Serial.println(" ");
+  
+    //Determine if reading is stable
+    float stdRead = stddev(O2readings,nSample);
+    float avgRead = mean(O2readings,nSample);
+    Serial.print("STD: "); Serial.println(stdRead);
+    Serial.print("AVG: "); Serial.println(avgRead);
+  //If std is less than 0.04 mV then reading is ok!
+  if (stdRead < 0.04) {
+    stable = true;
+  } 
+  else{
+    stable = false;
   }
 
   //Calculate calibration factor
-  if (calOK == true) {
-    cal = 20.9/reading;
-    Serial.println(cal);
+  if (stable == true) {
+    cal = 20.9/avgRead;
+        Serial.print("Cal: "); Serial.println(cal);
     calibrated = true;
-    TFTscreen.stroke(0,255,0);
+    TFTscreen.stroke(green[0],green[1],green[2]);
     TFTscreen.text("OK!",0,30);
   } 
   else {
     // or return to uncalibrated state
     calibrated = false;
     cal = 1.0; 
-    TFTscreen.stroke(255,0,0);
+    TFTscreen.stroke(red[0],red[1],red[2]);
     TFTscreen.text("Error!",0,30);
   }
+  // Show result for a short time
   delay(800);
 
+  // force screen to update
   lastO2 = 0;
 
+  //Retun calibration factor
   return cal;   
 }
 
@@ -265,7 +282,8 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     TFTscreen.setTextSize(1);
     TFTscreen.text("Cal:",0,120);  
 
-    int txt[] = {255,255,255};    
+    int txt[] = {
+      255,255,255            };    
     float2TFT(0.0,cal,
     30,120,
     6,5,
@@ -274,16 +292,16 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     screenState = 2;     
   }
 
-/*
+  /*
 if (hold == false){
-    int txt[] = {
-      255,255,255    };
-  } 
-  else { 
-    int txt[] = {
-      0,100,255    };
-  }  // Txt color blue
-*/
+   int txt[] = {
+   255,255,255    };
+   } 
+   else { 
+   int txt[] = {
+   0,100,255    };
+   }  // Txt color blue
+   */
 
   Serial.print("is stable: ");    
   Serial.println(stable);
@@ -291,23 +309,23 @@ if (hold == false){
 
   if (stable == true){
     int txt[] = {
-      0,255,0    }; //txt color green
-      Serial.println("Text green");
+      0,255,0                }; //txt color green
+    Serial.println("Text green");
   } 
   else {
     int txt[] = {
-      255,0,0    }; // Txt color red
-      Serial.println("Text red");
+      255,0,0                }; // Txt color red
+    Serial.println("Text red");
   }
 
 
-Serial.print("Text color ");
+  Serial.print("Text color ");
   Serial.print(txt[0]);
   Serial.print("  ");
-    Serial.print(txt[1]);
-      Serial.print("  ");
-      Serial.println(txt[2]);
-  
+  Serial.print(txt[1]);
+  Serial.print("  ");
+  Serial.println(txt[2]);
+
   TFTscreen.setTextSize(6);
   float2TFT(O2,lastO2,     //New and old value
   0,30,          //Xpos, Ypos
@@ -341,11 +359,11 @@ void printRAWValueToTFT (float O2,float lastO2) {
 
   if (hold == false){
     int txt[] = {
-      255,255,255    };
+      255,255,255                };
   }  // Txt color white
   else { 
     int txt[] = {
-      0,0,255    };
+      0,0,255                };
   }  // Txt color blue
 
   if (O2 != lastO2) {
@@ -385,9 +403,9 @@ void float2TFT(float value,float oldValue,int posX, int posY, int width, int pre
   Serial.print("Text color ");
   Serial.print(txt[0]);
   Serial.print("  ");
-    Serial.print(txt[1]);
-      Serial.print("  ");
-      Serial.println(txt[2]);
+  Serial.print(txt[1]);
+  Serial.print("  ");
+  Serial.println(txt[2]);
   TFTscreen.stroke(txt[0],txt[1],txt[2]);
   TFTscreen.text(valPrintout,posX,posY);
 
@@ -415,6 +433,9 @@ boolean isStable(float * O2readings,int nReadings) {
     return false;
   }
 }
+
+
+
 
 
 
