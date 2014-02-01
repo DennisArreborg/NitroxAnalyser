@@ -30,6 +30,7 @@ int screenState = 0;             //State of the screen
 //2: Calibratin
 //3: 
 float cal = 1.0;                 //Calibration factor
+unsigned long calTime = 0;      //Time for last calibration
 int state = 1;                   //Analyze state:
 //1: Main
 //2: calibrate
@@ -69,8 +70,8 @@ void setup() {
 
   //Start serial communication
   Serial.begin(9600);
-  
-    // initialize the pushbutton pin as an input:
+
+  // initialize the pushbutton pin as an input:
   pinMode(BUTTON, INPUT_PULLUP);     
 
 
@@ -88,14 +89,16 @@ void setup() {
 }
 
 void loop() {
+  // Check if someone pushed the button
   readButton();
 
+  // Check if it is time to update anything
   if (millis() - lasttime < 250) {
     //do nothing
     return;
   }
 
-
+  
   if (hold == false) {
     //Read sensor
     O2 = getO2value(cal);
@@ -116,7 +119,7 @@ void loop() {
 
   //Print serial
   Serial.print("O2: ");
-  Serial.println(O2);
+  Serial.println(O2,5);
 
 
   if (calibrated == true){
@@ -148,7 +151,7 @@ float readSensor() {
  ---------------------------------------------------------*/
 float getO2value(float cal) {
   //Read sensor
-  int rawO2 = readSensor();
+  float rawO2 = readSensor();
 
   //Print serial
   Serial.print("Raw O2: ");
@@ -178,7 +181,7 @@ float calibrate() {
   int nSample = 20;      //Number of samples
   int n = 0;              //Sample counter
   int delayTime = 250;  //Delay beween sampe
-  unsigned long readTime = 0;     //Sum of samples
+  unsigned long readTime = 0;     //Time of last reading
 
   Serial.println("Calibrating sensor to 20.9");
 
@@ -241,7 +244,9 @@ float calibrate() {
 
   // force screen to update
   lastO2 = 0;
-
+  
+  //Save time
+  calTime = millis();
   //Retun calibration factor
   return cal;   
 }
@@ -262,7 +267,7 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     TFTscreen.text("Cal:",0,120);  
 
     int txt[] = {
-      255,255,255                };    
+      255,255,255                    };    
     float2TFT(0.0,cal,
     30,120,
     6,5,
@@ -271,40 +276,33 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     screenState = 2;     
   }
 
-  /*
-if (hold == false){
-   int txt[] = {
-   255,255,255    };
-   } 
-   else { 
-   int txt[] = {
-   0,100,255    };
-   }  // Txt color blue
-   */
-
   Serial.print("is stable: ");    
   Serial.println(stable);
 
 
   if (stable == true){
-    int txt[] = {
-      0,255,0                    }; //txt color green
+    txt[0] = 0;
+   txt[1] = 255;
+  txt[2] = 0; //txt color green
     Serial.println("Text green");
   } 
   else {
-    int txt[] = {
-      255,0,0                    }; // Txt color red
+    txt[0] = 255;
+   txt[1] = 0;
+  txt[2] = 0; //txt color green
+
     Serial.println("Text red");
   }
 
-
+/*
   Serial.print("Text color ");
   Serial.print(txt[0]);
   Serial.print("  ");
   Serial.print(txt[1]);
   Serial.print("  ");
   Serial.println(txt[2]);
-
+*/
+  
   TFTscreen.setTextSize(6);
   float2TFT(O2,lastO2,     //New and old value
   0,30,          //Xpos, Ypos
@@ -338,11 +336,11 @@ void printRAWValueToTFT (float O2,float lastO2) {
 
   if (hold == false){
     int txt[] = {
-      255,255,255                    };
+      255,255,255                        };
   }  // Txt color white
   else { 
     int txt[] = {
-      0,0,255                    };
+      0,0,255                        };
   }  // Txt color blue
 
   if (O2 != lastO2) {
@@ -365,14 +363,15 @@ void float2TFT(float value,float oldValue,int posX, int posY, int width, int pre
   dtostrf(oldValue, width, precision, oldValPrintout);
 
   //If arrays has changed, update
-  Serial.println(valPrintout);
-  Serial.println(oldValPrintout);
-  if (valPrintout != oldValPrintout) {
+  Serial.print(value); Serial.print("\t"); Serial.println(oldValue);
+  if (value != oldValue) {
     Serial.print("Different!!");
   }
-  Serial.println();
+  Serial.println(" ");
+
 
   if (value != oldValue) {
+    //Update screen
     Serial.println("Writing to TFT");
     //Clear screen of old print
     TFTscreen.stroke(bg[0],bg[1],bg[2]);
@@ -416,13 +415,13 @@ boolean isStable(float * O2readings,int nReadings) {
 
 
 /*********************************************************
-Read Button
-*********************************************************/
+ * Read Button
+ *********************************************************/
 void readButton(){
   //Read button
   buttonState[0] = buttonState[1];
   buttonState[1] = digitalRead(BUTTON);
-  
+
   //If button went from high to low, a push has started
   if (buttonState[0] == HIGH && buttonState[1] == LOW){
     //If button went from low to high, a push has started
@@ -447,16 +446,17 @@ void readButton(){
     // Button is released in a short press
     // Change hold state
     if (buttonDur < 1500){
-    if (hold == false) {
-      hold = true;
-      lastO2 = 0.0;
-    } 
-    else {
-      hold = false;
-    }
-    //Reset timer 
-    buttonDur = 0;
-    t0 = 0;
+      if (hold == false) {
+        hold = true;
+        lastO2 = 0.0;
+      } 
+      else {
+        hold = false;
+      }
+      //Reset timer 
+      buttonDur = 0;
+      t0 = 0;
     }
   }
-  }
+}
+
