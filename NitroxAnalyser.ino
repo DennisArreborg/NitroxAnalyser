@@ -63,6 +63,7 @@ int green[] = {
 int blue[] = {
   0,0,255};
 
+boolean sd = false;    //Is sd card presens?
 
 
 
@@ -85,6 +86,21 @@ void setup() {
   // clear the screen with black
   Serial.println("Clear screen");
   TFTscreen.background(0,0,0); 
+  
+  //Initialize SD
+    Serial.print("Initializing SD card...");
+  // make sure that the default chip select pin is set to
+  // output, even if you don't use it:
+  pinMode(SD_CS, OUTPUT);
+  // see if the card is present and can be initialized:
+  if (!SD.begin(SD_CS)) {
+    Serial.println("Card failed, or not present");
+    sd = false;
+  } else {
+  Serial.println("card initialized.");
+  sd = true;
+  }
+
 
 }
 
@@ -245,10 +261,23 @@ float calibrate() {
   // force screen to update
   lastO2 = 0;
   
-  //Save time
+  /*
+  // Save calibration to SD card
+  //Open file
+  File dataFile = SD.open("cal.log", FILE_WRITE);
+  // if the file is available, write to it:
+  if (dataFile) {
+    dataFile.println(cal,6);
+    dataFile.close();
+  }
+  
+  */
+  
+  //Save time for calibration
   calTime = millis();
   //Retun calibration factor
   return cal;   
+  
 }
 
 /*--------------------------------------------------------
