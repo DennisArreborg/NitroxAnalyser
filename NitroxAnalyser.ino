@@ -35,7 +35,8 @@ int state = 1;                   //Analyze state:
 //2: calibrate
 //3:hold
 int t0 = 0;                      // Button timer
-int buttonState = 0;             // Button state
+int buttonState[2] = {
+  0};             // Button state (old and new)
 int buttonDur = 0;              // Duration of push
 unsigned long lasttime = 0;      // last update time
 boolean hold = false;            //hold activated=
@@ -68,6 +69,10 @@ void setup() {
 
   //Start serial communication
   Serial.begin(9600);
+  
+    // initialize the pushbutton pin as an input:
+  pinMode(BUTTON, INPUT_PULLUP);     
+
 
   //Start adc
   adc.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
@@ -83,36 +88,7 @@ void setup() {
 }
 
 void loop() {
-  //Read button
-  while (digitalRead(BUTTON) == LOW) {
-    // If the button is pressed, determine the lengt of the push
-    if (t0 == 0) {
-      t0 = millis();
-    }    
-    buttonDur = millis()-t0;
-    if (buttonDur > 1500 ) {
-      //If long push: Calibrate
-      calibrate();
-      buttonDur = 0;
-      t0 = 0;
-      hold = false;
-    }
-  }
-  if (buttonDur > 0) {
-    // If short push: Hold value
-    if (hold == false) {
-      hold = true;
-      lastO2 = 0.0;
-    } 
-    else {
-      hold = false;
-    }
-    //Reset timer 
-    buttonDur = 0;
-    t0 = 0;
-  }
-
-
+  readButton();
 
   if (millis() - lasttime < 250) {
     //do nothing
@@ -217,23 +193,25 @@ float calibrate() {
   while (n < nSample) {
     if (millis()-readTime >= delayTime) {
       //store in array, log the 20 last readings
-       O2readings[n] = readSensor();
-       Serial.print(O2readings[n]);
-       Serial.print("\t");
-       //increment counter
-       n++;
-       //update read time
-       readTime = millis();
-      
+      O2readings[n] = readSensor();
+      Serial.print(O2readings[n]);
+      Serial.print("\t");
+      //increment counter
+      n++;
+      //update read time
+      readTime = millis();
+
     }
   }
   Serial.println(" ");
-  
-    //Determine if reading is stable
-    float stdRead = stddev(O2readings,nSample);
-    float avgRead = mean(O2readings,nSample);
-    Serial.print("STD: "); Serial.println(stdRead);
-    Serial.print("AVG: "); Serial.println(avgRead);
+
+  //Determine if reading is stable
+  float stdRead = stddev(O2readings,nSample);
+  float avgRead = mean(O2readings,nSample);
+  Serial.print("STD: "); 
+  Serial.println(stdRead);
+  Serial.print("AVG: "); 
+  Serial.println(avgRead);
   //If std is less than 0.04 mV then reading is ok!
   if (stdRead < 0.04) {
     stable = true;
@@ -245,7 +223,8 @@ float calibrate() {
   //Calculate calibration factor
   if (stable == true) {
     cal = 20.9/avgRead;
-        Serial.print("Cal: "); Serial.println(cal);
+    Serial.print("Cal: "); 
+    Serial.println(cal);
     calibrated = true;
     TFTscreen.stroke(green[0],green[1],green[2]);
     TFTscreen.text("OK!",0,30);
@@ -283,7 +262,7 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     TFTscreen.text("Cal:",0,120);  
 
     int txt[] = {
-      255,255,255            };    
+      255,255,255                };    
     float2TFT(0.0,cal,
     30,120,
     6,5,
@@ -309,12 +288,12 @@ if (hold == false){
 
   if (stable == true){
     int txt[] = {
-      0,255,0                }; //txt color green
+      0,255,0                    }; //txt color green
     Serial.println("Text green");
   } 
   else {
     int txt[] = {
-      255,0,0                }; // Txt color red
+      255,0,0                    }; // Txt color red
     Serial.println("Text red");
   }
 
@@ -359,11 +338,11 @@ void printRAWValueToTFT (float O2,float lastO2) {
 
   if (hold == false){
     int txt[] = {
-      255,255,255                };
+      255,255,255                    };
   }  // Txt color white
   else { 
     int txt[] = {
-      0,0,255                };
+      0,0,255                    };
   }  // Txt color blue
 
   if (O2 != lastO2) {
@@ -436,6 +415,48 @@ boolean isStable(float * O2readings,int nReadings) {
 
 
 
+/*********************************************************
+Read Button
+*********************************************************/
+void readButton(){
+  //Read button
+  buttonState[0] = buttonState[1];
+  buttonState[1] = digitalRead(BUTTON);
+  
+  //If button went from high to low, a push has started
+  if (buttonState[0] == HIGH && buttonState[1] == LOW){
+    //If button went from low to high, a push has started
+    //Save start time
+    t0 = millis();
+  } 
+  else if (buttonState[0] == LOW && buttonState[1] == LOW){
+    //Button is still pressed. How long time now?
+    buttonDur = millis()-t0;
 
-
-
+    if (buttonDur > 1500 ) {
+      //If long push: Calibrate
+      calibrate();
+      // Reset time
+      buttonDur = 0;
+      t0 = 0;
+      hold = false;
+    }
+  } 
+  else if (buttonState[0] == LOW && buttonState[1] == HIGH){
+    buttonDur = millis()-t0;
+    // Button is released in a short press
+    // Change hold state
+    if (buttonDur < 1500){
+    if (hold == false) {
+      hold = true;
+      lastO2 = 0.0;
+    } 
+    else {
+      hold = false;
+    }
+    //Reset timer 
+    buttonDur = 0;
+    t0 = 0;
+    }
+  }
+  }
