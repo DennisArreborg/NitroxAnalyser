@@ -3,7 +3,9 @@
 #include <Average.h> // math
 #include <Wire.h>
 #include <Adafruit_ADS1015.h>
-#include <SD.h>
+#include <EEPROM.h>
+#include "EEPROMAnything.h"
+
 
 //Init adc
 Adafruit_ADS1115 adc;  /* Use this for the 16-bit version */
@@ -63,10 +65,6 @@ int green[] = {
 int blue[] = {
   0,0,255};
 
-boolean sd = false;    //Is sd card presens?
-
-
-
 void setup() {
 
   //Start serial communication
@@ -79,7 +77,7 @@ void setup() {
   //Start adc
   adc.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
   adc.begin();
-#define GAIN 0.015625
+#define GAIN 0.015625  // mV/bit
 
   // initialize the screen
   TFTscreen.begin();
@@ -87,6 +85,7 @@ void setup() {
   Serial.println("Clear screen");
   TFTscreen.background(0,0,0); 
   
+  /*
   //Initialize SD
     Serial.print("Initializing SD card...");
   // make sure that the default chip select pin is set to
@@ -100,7 +99,11 @@ void setup() {
   Serial.println("card initialized.");
   sd = true;
   }
+*/
 
+// Read calibration factor from EEPROM
+EEPROM_readAnything(0,cal);
+calibrated = true;
 
 }
 
@@ -272,6 +275,8 @@ float calibrate() {
   }
   
   */
+  
+  EEPROM_writeAnything(0,cal);
   
   //Save time for calibration
   calTime = millis();
