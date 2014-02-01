@@ -5,7 +5,7 @@
 #include <Adafruit_ADS1015.h>
 #include <EEPROM.h>
 #include "EEPROMAnything.h"
-#include <avr/sleep.h>
+//#include <avr/sleep.h>
 
 
 //Init adc
@@ -71,7 +71,7 @@ int blue[] = {
   0,0,255};
 
 unsigned long lastActive = 0;
-
+//PImage logo;
 void setup() {
 
   //Start serial communication
@@ -84,7 +84,7 @@ void setup() {
   //Start adc
   adc.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
   adc.begin();
-#define GAIN 0.015625  // mV/bit
+  #define GAIN 0.015625  // mV/bit
 
   // initialize the screen
   TFTscreen.begin();
@@ -118,18 +118,25 @@ void loop() {
   // Check if someone pushed the button
   readButton();
 
+/*
   //Check if iet is time to power down
-  if (millis()-lastActive > 600000){
-    /*
+  //Serial.print("Active Time: ");Serial.println(millis()-lastActive);
+  if (millis()-lastActive > 10000){
+  
+    Serial.println("");    Serial.println("");    Serial.println("");
+        Serial.println("-----------------------------------");
+            Serial.println("Powering Down.......");
+            delay(2000);
+    
     //Power down
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable(); 
 //    attachInterrupt(0,wakeUpNow, LOW);
     sleep_mode();            // here the device is actually put to sleep!!
                              // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
-                             */
+                            
  }
-
+*/
   // Check if it is time to update anything
   if (millis() - lasttime < 250) {
     //do nothing
@@ -226,8 +233,7 @@ float calibrate() {
   Serial.println("Calibrating sensor to 20.9");
 
 
-  //Write to TFT: Initiate screen state 3
-  TFTscreen.background(0,0,0);  //Clear screen
+  TFTscreen.background(0,0,0);
   TFTscreen.stroke(255,255,255);  //While text
   TFTscreen.setTextSize(2);
   TFTscreen.text("Calibrating",0,0);
@@ -255,8 +261,8 @@ float calibrate() {
   Serial.println(stdRead);
   Serial.print("AVG: "); 
   Serial.println(avgRead);
-  //If std is less than 0.04 mV then reading is ok!
-  if (stdRead < 0.04) {
+  //If std is less than 0.02 mV then reading is ok!
+  if (stdRead < 0.02) {
     stable = true;
   } 
   else{
@@ -508,6 +514,7 @@ void readButton(){
     //If button went from low to high, a push has started
     //Save start time
     t0 = millis();
+      lastActive = millis();
   } 
   else if (buttonState[0] == LOW && buttonState[1] == LOW){
     //Button is still pressed. How long time now?
@@ -521,6 +528,7 @@ void readButton(){
       t0 = 0;
       hold = false;
     }
+      lastActive = millis();
   } 
   else if (buttonState[0] == LOW && buttonState[1] == HIGH){
     buttonDur = millis()-t0;
@@ -538,9 +546,10 @@ void readButton(){
       buttonDur = 0;
       t0 = 0;
     }
+    lastActive = millis();  
   }
   
-  lastActive = millis();
+
 }
 
 
