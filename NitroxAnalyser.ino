@@ -141,9 +141,7 @@ void loop() {
   if (calibrated == true){
     printO2toTFT(O2,lastO2,stable); 
   } 
-  else {
-    printRAWValueToTFT(O2,lastO2);
-  }
+
   //update last printed value
   lastO2 = O2;
   lasttime = millis();
@@ -304,7 +302,7 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     bg);
     screenState = 2;     
   }
-
+  
   Serial.print("is stable: ");    
   Serial.println(stable);
 
@@ -331,54 +329,26 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
   Serial.print("  ");
   Serial.println(txt[2]);
 */
-  
+//Print 02  
   TFTscreen.setTextSize(6);
   float2TFT(O2,lastO2,     //New and old value
   0,30,          //Xpos, Ypos
   4,1,           //Width, precision
   bg,         //Bg color
   txt);  //txt color; 
+
+//Print Sensor
+lastSensor = sensor;
+sensor = readSensor;
+  TFTscreen.setTextSize(2);
+  float2TFT(sensor,lastSensor,     //New and old value
+  0,72,          //Xpos, Ypos
+  4,1,           //Width, precision
+  bg,         //Bg color
+  white);  //txt color; 
+
+
 }
-
-
-/*-------------------------------------------------------
- Print mV reading to TFT
- --------------------------------------------------------*/
-
-void printRAWValueToTFT (float O2,float lastO2) {
-  if (screenState != 1) {
-    //Initiate main screen
-    TFTscreen.background(0,0,0);  //Clear screen
-    TFTscreen.stroke(255,255,255); // Txt color white
-    // set the text to size 2
-    TFTscreen.setTextSize(2);
-    // start the text at the top left of the screen
-    // this text is going to remain static
-    TFTscreen.text("Sensor mV:\n ",0,0);
-
-
-    TFTscreen.setTextSize(1);
-    TFTscreen.text("Push and hold to calibrate",0,116);        
-    screenState = 1;
-
-  }
-
-  if (hold == false){
-    int txt[] = {
-      255,255,255                        };
-  }  // Txt color white
-  else { 
-    int txt[] = {
-      0,0,255                        };
-  }  // Txt color blue
-
-  if (O2 != lastO2) {
-    Serial.print(O2);
-    TFTscreen.setTextSize(5);
-    float2TFT(O2,lastO2,0,30,3,0,bg,txt);    
-  }
-}
-
 
 
 /*----------------------------------------------------
