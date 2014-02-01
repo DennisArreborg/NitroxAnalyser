@@ -5,6 +5,7 @@
 #include <Adafruit_ADS1015.h>
 #include <EEPROM.h>
 #include "EEPROMAnything.h"
+#include <avr/sleep.h>
 
 
 //Init adc
@@ -69,6 +70,8 @@ int green[] = {
 int blue[] = {
   0,0,255};
 
+unsigned long lastActive = 0;
+
 void setup() {
 
   //Start serial communication
@@ -114,6 +117,18 @@ void setup() {
 void loop() {
   // Check if someone pushed the button
   readButton();
+
+  //Check if iet is time to power down
+  if (millis()-lastActive > 600000){
+    /*
+    //Power down
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_enable(); 
+//    attachInterrupt(0,wakeUpNow, LOW);
+    sleep_mode();            // here the device is actually put to sleep!!
+                             // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
+                             */
+ }
 
   // Check if it is time to update anything
   if (millis() - lasttime < 250) {
@@ -306,26 +321,26 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     //Write calibration factor    
     TFTscreen.setTextSize(1);
     TFTscreen.text("Cal:",0,120);
-    
+
     float2TFT(0,cal,
     25,120,
     6,5,
     white,
     bg);
-    
+
     if (oldCal != 0){
-   TFTscreen.stroke(255,255,255);  // Txt color white
-    TFTscreen.text("(",75,120);
-    
-    float2TFT(-1,oldCal,
-    81,120,
-    6,5,
-    white,
-    bg);    
-   TFTscreen.stroke(255,255,255);  // Txt color white
-    TFTscreen.text(")",123,120);
+      TFTscreen.stroke(255,255,255);  // Txt color white
+      TFTscreen.text("(",75,120);
+
+      float2TFT(-1,oldCal,
+      81,120,
+      6,5,
+      white,
+      bg);    
+      TFTscreen.stroke(255,255,255);  // Txt color white
+      TFTscreen.text(")",123,120);
     }
-    
+
     screenState = 2;     
   }
 
@@ -363,8 +378,9 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
   bg,         //Bg color
   txt);  //txt color; 
 
-  if (lastStable[1] != 0 && (lastStable[1] < 20.8 || lastStable[1] >21.0)) {
-    Serial.println("Last stable value: "); Serial.println(lastStable[1]);
+  if (lastStable[1] != 0 && lastStable[1] != lastStable[0] && (lastStable[1] < 20.6 || lastStable[1] >21.4)) {
+    Serial.println("Last stable value: "); 
+    Serial.println(lastStable[1]);
     TFTscreen.setTextSize(4);
     float2TFT(lastStable[1],lastStable[0],
     0,82,
@@ -399,11 +415,11 @@ void printRAWValueToTFT (float O2,float lastO2) {
 
   if (hold == false){
     int txt[] = {
-      255,255,255                            };
+      255,255,255                                };
   }  // Txt color white
   else { 
     int txt[] = {
-      0,0,255                            };
+      0,0,255                                };
   }  // Txt color blue
 
   if (O2 != lastO2) {
@@ -523,6 +539,9 @@ void readButton(){
       t0 = 0;
     }
   }
+  
+  lastActive = millis();
 }
+
 
 
