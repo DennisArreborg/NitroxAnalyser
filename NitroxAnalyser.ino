@@ -3,11 +3,25 @@
 #include <Average.h> // math
 #include <Wire.h>
 #include <Adafruit_ADS1015.h>
+#include <SD.h>
+
+//Init adc
+Adafruit_ADS1115 adc;  /* Use this for the 16-bit version */
+
+//pin definition TFT
+#define SD_CS  4
+#define LCD_CS 10
+#define DC     9
+#define RST    8 
+
+//Init screen
+TFT TFTscreen = TFT(LCD_CS, DC, RST);
+
+//pin definiiton Button
+#define BUTTON 7
 
 
-Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
-
-
+// Initialize variables
 float O2 = 0;
 float lastO2 = 1;
 boolean calibrated = false;
@@ -15,6 +29,7 @@ int screenState = 0;
 float cal = 1.0;
 int state = 1; //Analyze state: 1: Main, 2: calibrate, 3:hold
 int t0 = 0; // Button timer
+int buttonState = 0;
 int buttonDur = 0;
 unsigned long lasttime = 0;
 boolean hold = false;
@@ -31,21 +46,29 @@ int txt[3] = {
   255,255,255};
 
 void setup() {
+  
+  //Start serial communication
   Serial.begin(9600);
-    ads.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
-    ads.begin();
+  
+  //Start adc
+    adc.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
+    adc.begin();
+    #define GAIN 0.015625
+    
+    // Start TFT
 
-/*
-  // initialize the screen
-  EsploraTFT.begin();
+ // initialize the screen
+  TFTscreen.begin();
   // clear the screen with black
   Serial.println("Clear screen");
-  EsploraTFT.background(0,0,0); 
-  */
+  TFTscreen.background(0,0,0); 
+
 }
 
 void loop() {
-  while (Esplora.readButton(1) == LOW) {
+  //Read buttopn
+
+  while (digitalRead(BUTTON) == LOW) {
     // If the button is pressed, determine the lengt of the push
     if (t0 == 0) {
       t0 = millis();
@@ -115,6 +138,17 @@ void loop() {
   lasttime = millis();
 }
 
+/*----------------------------------------------------
+Read 02 sensor from ADC
+-----------------------------------------------------*/
+float readSensor() {
+  //Read 16 bit value from pin 0 and multiply by gain
+  float val = adc.readADC_SingleEnded(0)*GAIN;
+  
+  //This is reading in mV
+  return val;
+}
+  
 
 /*-------------------------------------------------------
  Reads value from o sensor. 
@@ -122,7 +156,7 @@ void loop() {
  ---------------------------------------------------------*/
 float getO2value(float cal) {
   //Read sensor
-  int rawO2 = Esplora.readLightSensor();
+  int rawO2 = readSensor();
 
   //Print serial
   Serial.print("Raw O2: ");
@@ -157,10 +191,10 @@ float calibrate() {
 
 
   //Write to TFT: Initiate screen state 3
-  EsploraTFT.background(0,0,0);  //Clear screen
-  EsploraTFT.stroke(255,255,255);  //While text
-  EsploraTFT.setTextSize(2);
-  EsploraTFT.text("Calibrating",0,0);
+  TFTscreen.background(0,0,0);  //Clear screen
+  TFTscreen.stroke(255,255,255);  //While text
+  TFTscreen.setTextSize(2);
+  TFTscreen.text("Calibrating",0,0);
   screenState = 3;
 
 
@@ -170,7 +204,7 @@ float calibrate() {
   boolean calOK = false;
 
   for (int i = 1; i<=nCount;i++) {
-    int val = Esplora.readLightSensor();
+    int val = readSensor();
 
     if (val < valMin) {
       valMin = val;
@@ -199,15 +233,15 @@ float calibrate() {
     cal = 20.9/reading;
     Serial.println(cal);
     calibrated = true;
-    EsploraTFT.stroke(0,255,0);
-    EsploraTFT.text("OK!",0,30);
+    TFTscreen.stroke(0,255,0);
+    TFTscreen.text("OK!",0,30);
   } 
   else {
     // or return to uncalibrated state
     calibrated = false;
     cal = 1.0; 
-    EsploraTFT.stroke(255,0,0);
-    EsploraTFT.text("Error!",0,30);
+    TFTscreen.stroke(255,0,0);
+    TFTscreen.text("Error!",0,30);
   }
   delay(800);
 
@@ -223,13 +257,13 @@ float calibrate() {
 void printO2toTFT (float O2,float lastO2,boolean stable) {
   if (screenState != 2) {
     //Initiate main screen
-    EsploraTFT.background(0,0,0);    //Clear screen
-    EsploraTFT.stroke(255,255,255);  // Txt color white
-    EsploraTFT.setTextSize(2);
-    EsploraTFT.text("pO2:",0,0);    
+    TFTscreen.background(0,0,0);    //Clear screen
+    TFTscreen.stroke(255,255,255);  // Txt color white
+    TFTscreen.setTextSize(2);
+    TFTscreen.text("pO2:",0,0);    
     //Write calibration factor    
-    EsploraTFT.setTextSize(1);
-    EsploraTFT.text("Cal:",0,120);  
+    TFTscreen.setTextSize(1);
+    TFTscreen.text("Cal:",0,120);  
 
     int txt[] = {255,255,255};    
     float2TFT(0.0,cal,
@@ -274,7 +308,7 @@ Serial.print("Text color ");
       Serial.print("  ");
       Serial.println(txt[2]);
   
-  EsploraTFT.setTextSize(6);
+  TFTscreen.setTextSize(6);
   float2TFT(O2,lastO2,     //New and old value
   0,30,          //Xpos, Ypos
   4,1,           //Width, precision
@@ -290,17 +324,17 @@ Serial.print("Text color ");
 void printRAWValueToTFT (float O2,float lastO2) {
   if (screenState != 1) {
     //Initiate main screen
-    EsploraTFT.background(0,0,0);  //Clear screen
-    EsploraTFT.stroke(255,255,255); // Txt color white
+    TFTscreen.background(0,0,0);  //Clear screen
+    TFTscreen.stroke(255,255,255); // Txt color white
     // set the text to size 2
-    EsploraTFT.setTextSize(2);
+    TFTscreen.setTextSize(2);
     // start the text at the top left of the screen
     // this text is going to remain static
-    EsploraTFT.text("Sensor mV:\n ",0,0);
+    TFTscreen.text("Sensor mV:\n ",0,0);
 
 
-    EsploraTFT.setTextSize(1);
-    EsploraTFT.text("Push and hold to calibrate",0,116);        
+    TFTscreen.setTextSize(1);
+    TFTscreen.text("Push and hold to calibrate",0,116);        
     screenState = 1;
 
   }
@@ -316,7 +350,7 @@ void printRAWValueToTFT (float O2,float lastO2) {
 
   if (O2 != lastO2) {
     Serial.print(O2);
-    EsploraTFT.setTextSize(5);
+    TFTscreen.setTextSize(5);
     float2TFT(O2,lastO2,0,30,3,0,bg,txt);    
   }
 }
@@ -344,8 +378,8 @@ void float2TFT(float value,float oldValue,int posX, int posY, int width, int pre
   if (value != oldValue) {
     Serial.println("Writing to TFT");
     //Clear screen of old print
-    EsploraTFT.stroke(bg[0],bg[1],bg[2]);
-    EsploraTFT.text(oldValPrintout,posX,posY);
+    TFTscreen.stroke(bg[0],bg[1],bg[2]);
+    TFTscreen.text(oldValPrintout,posX,posY);
   }
   //write new print
   Serial.print("Text color ");
@@ -354,8 +388,8 @@ void float2TFT(float value,float oldValue,int posX, int posY, int width, int pre
     Serial.print(txt[1]);
       Serial.print("  ");
       Serial.println(txt[2]);
-  EsploraTFT.stroke(txt[0],txt[1],txt[2]);
-  EsploraTFT.text(valPrintout,posX,posY);
+  TFTscreen.stroke(txt[0],txt[1],txt[2]);
+  TFTscreen.text(valPrintout,posX,posY);
 
 
 
