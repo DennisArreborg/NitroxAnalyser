@@ -64,7 +64,8 @@ int blue[] = {
   0,0,255};
 
 boolean sd = false;    //Is sd card presens?
-
+float sensor = 0;
+float lastSensor = 0;
 
 
 void setup() {
@@ -339,13 +340,25 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
 
 //Print Sensor
 lastSensor = sensor;
-sensor = readSensor;
+sensor = readSensor();
   TFTscreen.setTextSize(2);
   float2TFT(sensor,lastSensor,     //New and old value
-  0,72,          //Xpos, Ypos
+  0,74,          //Xpos, Ypos
   4,1,           //Width, precision
   bg,         //Bg color
   white);  //txt color; 
+
+/*
+//Print time since cal
+char elapsedTime;
+char elapsedTimePrintout[4];
+unsigned long elapsedTimeValue = (millis()-calTime)/60000;
+elapsedTime = String(elapsedTimeValue,DEC);
+elapsedTime.toCharArray(elapsedTimePrintout, 4);
+TFTscreen.setTextSize(1);
+TFTscreen.stroke(255,255,255);
+TFTscreen.text(elapsedTime,60,120);
+*/
 
 
 }
