@@ -32,7 +32,9 @@ int screenState = 0;             //State of the screen
 //2: Calibratin
 //3: 
 float cal = 1.0;                 //Calibration factor
+float oldCal = 0;
 unsigned long calTime = 0;      //Time for last calibration
+unsigned long calTimeElapsed = 0; //Time since last calibration
 int state = 1;                   //Analyze state:
 //1: Main
 //2: calibrate
@@ -47,6 +49,8 @@ boolean printHold = false;        //did hold value print
 float O2readings[20] = {          // Keep last 20 readings in memory
   0};
 boolean stable = false;          //Is reading stable?
+float lastStable[2] = {
+  0};
 int nReadings = 20;
 
 
@@ -84,26 +88,26 @@ void setup() {
   // clear the screen with black
   Serial.println("Clear screen");
   TFTscreen.background(0,0,0); 
-  
+
   /*
   //Initialize SD
-    Serial.print("Initializing SD card...");
-  // make sure that the default chip select pin is set to
-  // output, even if you don't use it:
-  pinMode(SD_CS, OUTPUT);
-  // see if the card is present and can be initialized:
-  if (!SD.begin(SD_CS)) {
-    Serial.println("Card failed, or not present");
-    sd = false;
-  } else {
-  Serial.println("card initialized.");
-  sd = true;
-  }
-*/
+   Serial.print("Initializing SD card...");
+   // make sure that the default chip select pin is set to
+   // output, even if you don't use it:
+   pinMode(SD_CS, OUTPUT);
+   // see if the card is present and can be initialized:
+   if (!SD.begin(SD_CS)) {
+   Serial.println("Card failed, or not present");
+   sd = false;
+   } else {
+   Serial.println("card initialized.");
+   sd = true;
+   }
+   */
 
-// Read calibration factor from EEPROM
-EEPROM_readAnything(0,cal);
-calibrated = true;
+  // Read calibration factor from EEPROM
+  EEPROM_readAnything(0,cal);
+  calibrated = true;
 
 }
 
@@ -117,7 +121,7 @@ void loop() {
     return;
   }
 
-  
+
   if (hold == false) {
     //Read sensor
     O2 = getO2value(cal);
@@ -133,7 +137,8 @@ void loop() {
 
   stable = isStable(O2readings,nReadings);
   if (stable == true) {
-    Serial.println("stable");
+    lastStable[0] = lastStable[1];
+    lastStable[1] = O2;
   }
 
   //Print serial
@@ -197,6 +202,7 @@ float getO2value(float cal) {
  Returns the slope, so current value is 20.9
  ------------------------------------------*/
 float calibrate() {
+  oldCal = cal;
   int nSample = 20;      //Number of samples
   int n = 0;              //Sample counter
   int delayTime = 250;  //Delay beween sampe
@@ -263,26 +269,27 @@ float calibrate() {
 
   // force screen to update
   lastO2 = 0;
-  
+  lastStable[1] = 0;
+
   /*
   // Save calibration to SD card
-  //Open file
-  File dataFile = SD.open("cal.log", FILE_WRITE);
-  // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.println(cal,6);
-    dataFile.close();
-  }
-  
-  */
-  
+   //Open file
+   File dataFile = SD.open("cal.log", FILE_WRITE);
+   // if the file is available, write to it:
+   if (dataFile) {
+   dataFile.println(cal,6);
+   dataFile.close();
+   }
+   
+   */
+
   EEPROM_writeAnything(0,cal);
-  
+
   //Save time for calibration
   calTime = millis();
   //Retun calibration factor
   return cal;   
-  
+
 }
 
 /*--------------------------------------------------------
@@ -298,15 +305,27 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     TFTscreen.text("pO2:",0,0);    
     //Write calibration factor    
     TFTscreen.setTextSize(1);
-    TFTscreen.text("Cal:",0,120);  
-
-    int txt[] = {
-      255,255,255                    };    
-    float2TFT(0.0,cal,
-    30,120,
+    TFTscreen.text("Cal:",0,120);
+    
+    float2TFT(0,cal,
+    25,120,
     6,5,
-    txt,
+    white,
     bg);
+    
+    if (oldCal != 0){
+   TFTscreen.stroke(255,255,255);  // Txt color white
+    TFTscreen.text("(",75,120);
+    
+    float2TFT(-1,oldCal,
+    81,120,
+    6,5,
+    white,
+    bg);    
+   TFTscreen.stroke(255,255,255);  // Txt color white
+    TFTscreen.text(")",123,120);
+    }
+    
     screenState = 2;     
   }
 
@@ -316,33 +335,43 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
 
   if (stable == true){
     txt[0] = 0;
-   txt[1] = 255;
-  txt[2] = 0; //txt color green
+    txt[1] = 255;
+    txt[2] = 0; //txt color green
     Serial.println("Text green");
   } 
   else {
     txt[0] = 255;
-   txt[1] = 0;
-  txt[2] = 0; //txt color green
+    txt[1] = 0;
+    txt[2] = 0; //txt color green
 
     Serial.println("Text red");
   }
 
-/*
+  /*
   Serial.print("Text color ");
-  Serial.print(txt[0]);
-  Serial.print("  ");
-  Serial.print(txt[1]);
-  Serial.print("  ");
-  Serial.println(txt[2]);
-*/
-  
+   Serial.print(txt[0]);
+   Serial.print("  ");
+   Serial.print(txt[1]);
+   Serial.print("  ");
+   Serial.println(txt[2]);
+   */
+
   TFTscreen.setTextSize(6);
   float2TFT(O2,lastO2,     //New and old value
-  0,30,          //Xpos, Ypos
+  0,25,          //Xpos, Ypos
   4,1,           //Width, precision
   bg,         //Bg color
   txt);  //txt color; 
+
+  if (lastStable[1] != 0 && (lastStable[1] < 20.8 || lastStable[1] >21.0)) {
+    Serial.println("Last stable value: "); Serial.println(lastStable[1]);
+    TFTscreen.setTextSize(4);
+    float2TFT(lastStable[1],lastStable[0],
+    0,82,
+    4,1,
+    bg,
+    white);
+  }
 }
 
 
@@ -370,11 +399,11 @@ void printRAWValueToTFT (float O2,float lastO2) {
 
   if (hold == false){
     int txt[] = {
-      255,255,255                        };
+      255,255,255                            };
   }  // Txt color white
   else { 
     int txt[] = {
-      0,0,255                        };
+      0,0,255                            };
   }  // Txt color blue
 
   if (O2 != lastO2) {
@@ -397,7 +426,9 @@ void float2TFT(float value,float oldValue,int posX, int posY, int width, int pre
   dtostrf(oldValue, width, precision, oldValPrintout);
 
   //If arrays has changed, update
-  Serial.print(value); Serial.print("\t"); Serial.println(oldValue);
+  Serial.print(value); 
+  Serial.print("\t"); 
+  Serial.println(oldValue);
   if (value != oldValue) {
     Serial.print("Different!!");
   }
@@ -438,7 +469,7 @@ boolean isStable(float * O2readings,int nReadings) {
   float avgRead = mean(O2readings,nReadings);
 
   //Determine if reading is stable (Std less than 0.1)
-  if (stdRead <= 0.1) {
+  if (stdRead <= 0.05) {
     return true;  
   } 
   else {
@@ -493,4 +524,5 @@ void readButton(){
     }
   }
 }
+
 
