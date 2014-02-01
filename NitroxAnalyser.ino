@@ -85,7 +85,7 @@ void setup() {
   // initialize the screen
   TFTscreen.begin();
   // clear the screen with black
-  Serial.println("Clear screen");
+//  Serial.println("Clear screen");
   TFTscreen.background(0,0,0); 
   
   //Initialize SD
@@ -95,10 +95,10 @@ void setup() {
   pinMode(SD_CS, OUTPUT);
   // see if the card is present and can be initialized:
   if (!SD.begin(SD_CS)) {
-    Serial.println("Card failed, or not present");
+//    Serial.println("Card failed, or not present");
     sd = false;
   } else {
-  Serial.println("card initialized.");
+ // Serial.println("card initialized.");
   sd = true;
   }
 
@@ -130,16 +130,8 @@ void loop() {
 
 
   stable = isStable(O2readings,nReadings);
-  if (stable == true) {
-    Serial.println("stable");
-  }
 
-  //Print serial
-  Serial.print("O2: ");
-  Serial.println(O2,5);
-
-
-  if (calibrated == true){
+ if (calibrated == true){
     printO2toTFT(O2,lastO2,stable); 
   } 
 
@@ -168,11 +160,12 @@ float getO2value(float cal) {
   //Read sensor
   float rawO2 = readSensor();
 
+/*
   //Print serial
   Serial.print("Raw O2: ");
   Serial.println(rawO2);
   Serial.println(calibrated);
-
+*/
   //Output value
   if (calibrated == true) {
     O2 = rawO2 * cal;
@@ -304,32 +297,18 @@ void printO2toTFT (float O2,float lastO2,boolean stable) {
     screenState = 2;     
   }
   
-  Serial.print("is stable: ");    
-  Serial.println(stable);
-
-
   if (stable == true){
     txt[0] = 0;
    txt[1] = 255;
   txt[2] = 0; //txt color green
-    Serial.println("Text green");
   } 
   else {
     txt[0] = 255;
    txt[1] = 0;
   txt[2] = 0; //txt color green
 
-    Serial.println("Text red");
   }
 
-/*
-  Serial.print("Text color ");
-  Serial.print(txt[0]);
-  Serial.print("  ");
-  Serial.print(txt[1]);
-  Serial.print("  ");
-  Serial.println(txt[2]);
-*/
 //Print 02  
   TFTscreen.setTextSize(6);
   float2TFT(O2,lastO2,     //New and old value
@@ -374,28 +353,21 @@ void float2TFT(float value,float oldValue,int posX, int posY, int width, int pre
   char oldValPrintout[width+1];
   dtostrf(oldValue, width, precision, oldValPrintout);
 
-  //If arrays has changed, update
-  Serial.print(value); Serial.print("\t"); Serial.println(oldValue);
-  if (value != oldValue) {
-    Serial.print("Different!!");
-  }
-  Serial.println(" ");
-
-
   if (value != oldValue) {
     //Update screen
-    Serial.println("Writing to TFT");
+//    Serial.println("Writing to TFT");
     //Clear screen of old print
     TFTscreen.stroke(bg[0],bg[1],bg[2]);
     TFTscreen.text(oldValPrintout,posX,posY);
   }
   //write new print
-  Serial.print("Text color ");
+/*  Serial.print("Text color ");
   Serial.print(txt[0]);
   Serial.print("  ");
   Serial.print(txt[1]);
   Serial.print("  ");
   Serial.println(txt[2]);
+*/
   TFTscreen.stroke(txt[0],txt[1],txt[2]);
   TFTscreen.text(valPrintout,posX,posY);
 
